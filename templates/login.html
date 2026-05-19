@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Minka Comunity - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="glass-card w-full max-w-sm text-center">
+        <h1 class="font-serif text-4xl text-[#8d2323] mb-2">Minka Comunity</h1>
+        <p class="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-8">Identidad y Comercio Ético</p>
+        
+        <form action="/login" method="POST" class="flex flex-col gap-4">
+            <input type="text" name="username" placeholder="Usuario" required>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <button type="submit" class="btn-principal mt-4">Ingresar</button>
+        </form>
+    </div>
+</body>
+</html>

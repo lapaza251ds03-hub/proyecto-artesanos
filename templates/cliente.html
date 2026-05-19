@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Minka Comunity - Catálogo Ético</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-[#fdfaf7]">
+    <nav class="p-6 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-[#8d2323]/10">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-[#8d2323] rounded-full flex items-center justify-center text-white font-serif">C</div>
+            <span class="font-serif text-xl tracking-tighter text-[#3e2723]">Minka Comunity</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bienvenido, {{ session['username'] }}</span>
+            <a href="/logout" class="text-[10px] bg-gray-100 px-4 py-2 rounded-full font-bold hover:bg-red-50 hover:text-red-600 transition">SALIR</a>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto p-8 md:p-16">
+        <header class="mb-16 text-center">
+            <h1 class="font-serif text-5xl md:text-6xl text-[#3e2723] mb-4">Herencia en cada fibra</h1>
+            <p class="text-[#8d2323] font-medium italic">Validando la transparencia del comercio artesanal</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {% for p in productos %}
+            <div class="glass-card bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100">
+                <div class="aspect-[4/5] overflow-hidden bg-gray-200 relative group">
+                    <img src="{{ url_for('static', filename='img/productos/' + p[5]) }}" 
+                         class="w-full h-full object-cover transition duration-700 group-hover:scale-110">
+                    <div class="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase">
+                        Evidencia Certificada
+                    </div>
+                </div>
+
+                <div class="p-8">
+                    <h3 class="font-serif text-2xl text-[#3e2723] mb-1">{{ p[0] }}</h3>
+                    <div class="flex items-center gap-4 text-[10px] font-bold text-gray-400 uppercase mb-6 tracking-wider">
+                        <span>Dificultad: {{ p[4] }}</span>
+                        <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
+                        <span>{{ p[3] }} Horas</span>
+                    </div>
+
+                    <div class="bg-[#f0fdf4] p-5 rounded-2xl border border-green-100 mb-6">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="text-[10px] font-bold text-green-700 uppercase">Impacto Directo</span>
+                            <span class="font-serif text-lg text-green-800">S/ {{ p[2] }}</span>
+                        </div>
+                        <div class="w-full bg-green-200 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-green-600 h-full rounded-full" style="width: 80%"></div>
+                        </div>
+                        <p class="text-[9px] text-green-600 mt-2 italic">* El 80% del pago llega directamente al artesano.</p>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-serif text-xl">S/ {{ p[1] }}</span>
+                        <button onclick="comprar('{{ p[0] }}')" class="btn-principal bg-[#8d2323] text-white px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#6d1b1b]">
+                            Adquirir
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <script>
+        function comprar(nombre) {
+            alert("Gracias por elegir " + nombre + ". Estás preservando la técnica ancestral de Cusco.");
+        }
+    </script>
+</body>
+</html>

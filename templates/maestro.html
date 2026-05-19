@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Maestro - Minka Comunity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-[#f0fdf4]">
+    <nav class="p-6 flex justify-between items-center bg-white/80 backdrop-blur-md border-b-4 border-green-700">
+        <div class="font-serif text-2xl text-green-800">Minka Comunity <span class="text-xs font-sans font-bold">MAESTRO</span></div>
+        <a href="/logout" class="text-xs font-bold text-red-600 bg-red-50 px-4 py-2 rounded-full hover:bg-red-100 transition">CERRAR SESIÓN</a>
+    </nav>
+
+    <main class="max-w-5xl mx-auto p-8 md:p-12">
+        <div class="mb-10">
+            <h1 class="font-serif text-4xl text-green-900">¡Kamisaki, {{ usuario }}!</h1>
+            <p class="text-green-700 italic">Sube tus nuevas creaciones y certifica tu arte.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="md:col-span-2 glass-card bg-white shadow-xl">
+                <form action="/registrar" method="POST" enctype="multipart/form-data" class="flex flex-col gap-5">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Información del Tejido</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Nombre de la prenda</label>
+                            <input type="text" name="prenda" placeholder="Ej. Poncho Suri Rojo" required>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Precio Turista (S/)</label>
+                            <input type="number" name="precio" placeholder="0.00" step="0.01" required>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Horas de Trabajo</label>
+                            <input type="number" name="horas" placeholder="Ej. 120" required>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Nivel de Dificultad</label>
+                            <select name="dificultad">
+                                <option>Baja (Trama simple)</option>
+                                <option>Media (Iconografía básica)</option>
+                                <option>Alta (Técnica doble cara)</option>
+                                <option>Maestra (Hilos finos)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 mt-2">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase">Foto o Video de Evidencia</label>
+                        <input type="file" name="archivo" accept="image/*,video/*" class="bg-white border-2 border-dashed border-green-200 p-6 text-center cursor-pointer hover:border-green-500 transition" required>
+                    </div>
+
+                    <button type="submit" class="btn-principal mt-4 py-4 text-sm" style="background-color: #166534;">
+                        Publicar en la Tienda Global
+                    </button>
+                </form>
+            </div>
+
+            <div class="flex flex-col gap-6">
+                <div class="glass-card bg-green-800 text-white text-center">
+                    <p class="text-[10px] uppercase opacity-70 mb-2">Dinero en Cartera</p>
+                    <h2 class="text-4xl font-serif">S/ 1,240.00</h2>
+                    <button class="mt-4 text-[9px] font-bold bg-white/20 px-4 py-2 rounded-full border border-white/30">RETIRAR AHORA</button>
+                </div>
+                
+                <div class="glass-card bg-white border border-green-100">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase mb-4 text-center">Tips de Venta</h4>
+                    <p class="text-xs text-green-800 italic">"Los turistas valoran ver tus manos tejiendo. Sube videos cortos de 10 segundos."</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
