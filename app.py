@@ -99,14 +99,21 @@ def vista_cliente():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('SELECT prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url FROM productos')
-        productos = cur.fetchall()
+        # IMPORTANTE: Hemos añadido el ID al final de la consulta (es el p[6])
+        cur.execute('SELECT prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, id FROM productos')
+        raw_productos = cur.fetchall()
         cur.close()
         conn.close()
+        
+        productos = []
+        for p in raw_productos:
+            lista_p = list(p)
+            if not lista_p[5]: lista_p[5] = 'default.jpg'
+            productos.append(lista_p)
+            
         return render_template('cliente.html', productos=productos)
     except Exception as e:
         return "Error en vista cliente: " + str(e)
-
 # 5. INTERFAZ DE MAESTRO
 @app.route('/maestro')
 def vista_maestro():
