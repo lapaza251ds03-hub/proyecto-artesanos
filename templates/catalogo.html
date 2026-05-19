@@ -29,11 +29,18 @@
             {% for p in productos %}
             <div class="col">
                 <div class="card h-100">
-                    <img src="{{ p[7] if p[7] else '/static/default.jpg' }}" class="card-img-top" alt="{{ p[1] }}">
+                    <img src="{{ p[7] if p[7] else 'https://via.placeholder.com/300' }}" class="card-img-top" alt="{{ p[1] }}" style="height: 250px; object-fit: cover;">
                     <div class="card-body text-center">
                         <h5 class="card-title">{{ p[1] }}</h5>
                         <p class="card-text text-muted">Dificultad: {{ p[5] }}</p>
                         <h4 class="text-success">S/ {{ p[2] }}</h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <h5 class="card-title">{{ p[1] }}</h5>
+                        <h4 class="text-success">S/ {{ p[2] }}</h4>
+                        <a href="/comprar/{{ p[0] }}" class="btn btn-primary w-100" onclick="return confirm('¿Estás seguro de comprar esta artesanía única?')">
+                            Comprar ahora
+                        </a>
                     </div>
                 </div>
             </div>
