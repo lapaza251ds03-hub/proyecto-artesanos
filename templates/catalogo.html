@@ -10,12 +10,22 @@
         .card { transition: transform 0.2s; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .card:hover { transform: scale(1.05); }
     </style>
+    <style>
+        .card-img-top {
+        width: 100%;
+        height: 250px;       /* Altura fija para todas */
+        object-fit: cover;   /* Recorta la imagen para que rellene el espacio sin deformarse */
+        border-bottom: 1px solid #ddd;
+      }
+    </style>
+    
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/">Minka Comunity</a>
             <a href="/login" class="btn btn-outline-light btn-sm">Acceso Maestro</a>
+            <a href="/comprar/{{ p[0] }}" class="btn btn-success" onclick="return confirm('¿Confirmar compra?')"> Comprar ahora </a>
         </div>
     </nav>
 
