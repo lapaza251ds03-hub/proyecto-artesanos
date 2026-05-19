@@ -65,7 +65,12 @@ def comprar(id):
 @app.route('/home')
 def home():
     if 'username' in session:
-        return redirect(url_for('vista_maestro')) if session['rol'] == 'maestro' else redirect(url_for('vista_cliente'))
+        # Si eres maestro, vas a tu panel de control
+        if session['rol'] == 'maestro':
+            return redirect(url_for('vista_maestro'))
+        # Si eres cliente, vas al catálogo (pero ya logueado)
+        else:
+            return redirect(url_for('catalogo'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
