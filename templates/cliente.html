@@ -56,9 +56,12 @@
 
                     <div class="flex justify-between items-center">
                         <span class="font-serif text-xl">S/ {{ p[1] }}</span>
-                        <button onclick="comprar('{{ p[0] }}')" class="btn-principal bg-[#8d2323] text-white px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#6d1b1b]">
+    
+                        <a href="/comprar/{{ p[6] }}" 
+                           onclick="return confirm('¿Estás seguro de que deseas adquirir esta pieza única?')"
+                           class="bg-[#8d2323] text-white px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#6d1b1b] transition">
                             Adquirir
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
