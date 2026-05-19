@@ -27,30 +27,20 @@ def get_db_connection():
     )
 
 @app.route('/')
-def home():
-    if 'username' in session:
-        return redirect(url_for('vista_maestro')) if session['rol'] == 'maestro' else redirect(url_for('vista_cliente'))
-    return redirect(url_for('login'))
+def catalogo():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM productos')
+    productos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('catalogo.html', productos=productos)
 
+# 2. El login lo movemos a /login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        user = request.form['username']
-        pw = request.form['password']
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute('SELECT rol FROM usuarios WHERE username = %s AND password = %s', (user, pw))
-            result = cur.fetchone()
-            cur.close()
-            conn.close()
-            if result:
-                session['username'] = user
-                session['rol'] = result[0]
-                return redirect(url_for('home'))
-            return "Error: Credenciales no validas"
-        except Exception as e:
-            return "Error de conexion: " + str(e)
+    # Aquí va todo tu código de login que ya tenías...
+    # Solo asegúrate de que el render_template apunte a 'login.html'
     return render_template('login.html')
 
 @app.route('/cliente')
