@@ -2,135 +2,81 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catálogo | Cusco Directo</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f4f1ea;
-        }
-        .navbar {
-            background-color: #5d4037 !important;
-        }
-        .hero-section {
-            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), 
-                        url('https://images.unsplash.com/photo-1584727638096-042c45049fee?q=80&w=2000');
-            background-size: cover;
-            background-position: center;
-            color: white;
-            padding: 80px 0;
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        .card {
-            border: none;
-            border-radius: 15px;
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-        .card-img-top {
-            width: 100%;
-            height: 250px;
-            object-fit: cover; /* Esto hace que la foto no se estire */
-            background-color: #eee;
-        }
-        .price-tag {
-            color: #2e7d32;
-            font-weight: 600;
-            font-size: 1.4rem;
-        }
-        .btn-buy {
-            background-color: #8d6e63;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            padding: 10px 20px;
-            font-weight: 600;
-        }
-        .btn-buy:hover {
-            background-color: #5d4037;
-            color: white;
-        }
-        .badge-difficulty {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background-color: rgba(255,255,255,0.9);
-            color: #333;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-    </style>
+    <title>Minka Community - Catálogo Ético</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
-
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="/">🏔️ CUSCO DIRECTO</a>
-            <div class="ms-auto">
-                <a href="/login" class="btn btn-outline-light btn-sm">Panel Maestro</a>
-            </div>
+<body class="bg-[#fdfaf7]">
+    <nav class="p-6 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-[#8d2323]/10">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-[#8d2323] rounded-full flex items-center justify-center text-white font-serif">C</div>
+            <span class="font-serif text-xl tracking-tighter text-[#3e2723]">Minka Community</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <a href="/login" class="text-[10px] bg-[#8d2323] text-white px-4 py-2 rounded-full font-bold hover:bg-[#6d1b1b] transition tracking-widest uppercase">
+                Acceso Maestro
+            </a>
         </div>
     </nav>
 
-    <header class="hero-section">
-        <div class="container">
-            <h1 class="display-4 fw-bold">Artesanías Únicas</h1>
-            <p class="lead">Piezas hechas a mano con el corazón de los Andes</p>
-        </div>
-    </header>
+    <main class="max-w-6xl mx-auto p-8 md:p-16">
+        <header class="mb-16 text-center">
+            <h1 class="font-serif text-5xl md:text-6xl text-[#3e2723] mb-4">Herencia en cada fibra</h1>
+            <p class="text-[#8d2323] font-medium italic">Validando la transparencia del comercio artesanal</p>
+        </header>
 
-    <div class="container mb-5">
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
             {% for p in productos %}
-            <div class="col">
-                <div class="card h-100 position-relative">
-                    <span class="badge-difficulty">{{ p[5] }}</span>
+            <div class="glass-card bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100">
+                <div class="aspect-[4/5] overflow-hidden bg-gray-200 relative group">
+                    <img src="{{ p[5] }}" 
+                         class="w-full h-full object-cover transition duration-700 group-hover:scale-110"
+                         onerror="this.src='https://via.placeholder.com/400x500?text=Artesania'">
                     
-                    <img src="{{ p[7] }}" 
-                         class="card-img-top" 
-                         alt="{{ p[1] }}"
-                         onerror="this.src='https://via.placeholder.com/400x300?text=Imagen+No+Disponible'">
-                    
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title fw-bold text-dark">{{ p[1] }}</h5>
-                        <p class="text-muted small">Tiempo estimado: {{ p[4] }}</p>
-                        
-                        <div class="mt-auto d-flex justify-content-between align-items-center">
-                            <span class="price-tag">S/ {{ p[2] }}</span>
-                            <a href="/comprar/{{ p[0] }}" 
-                               class="btn btn-buy" 
-                               onclick="return confirm('¿Deseas adquirir esta pieza única? Se retirará del catálogo.')">
-                                Comprar
-                            </a>
+                    <div class="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase">
+                        Evidencia Certificada
+                    </div>
+                </div>
+
+                <div class="p-8">
+                    <h3 class="font-serif text-2xl text-[#3e2723] mb-1">{{ p[0] }}</h3>
+                    <div class="flex items-center gap-4 text-[10px] font-bold text-gray-400 uppercase mb-6 tracking-wider">
+                        <span>Dificultad: {{ p[4] }}</span>
+                        <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
+                        <span>{{ p[3] }} Horas</span>
+                    </div>
+
+                    <div class="bg-[#f0fdf4] p-5 rounded-2xl border border-green-100 mb-6">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="text-[10px] font-bold text-green-700 uppercase">Impacto Directo</span>
+                            <span class="font-serif text-lg text-green-800">S/ {{ p[2] }}</span>
                         </div>
+                        <div class="w-full bg-green-200 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-green-600 h-full rounded-full" style="width: 80%"></div>
+                        </div>
+                        <p class="text-[9px] text-green-600 mt-2 italic">* El 80% del pago llega directamente al artesano.</p>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-serif text-xl text-[#3e2723]">S/ {{ p[1] }}</span>
+                        <button onclick="comprar('{{ p[0] }}')" class="btn-principal bg-[#8d2323] text-white px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#6d1b1b]">
+                            Adquirir
+                        </button>
                     </div>
                 </div>
             </div>
             {% endfor %}
-            
-            {% if not productos %}
-            <div class="col-12 text-center my-5">
-                <h3 class="text-muted">No hay artesanías disponibles por ahora.</h3>
-                <p>Vuelve pronto para ver nuevas creaciones.</p>
-            </div>
-            {% endif %}
         </div>
-    </div>
+    </main>
 
-    <footer class="bg-dark text-white text-center py-4 mt-5">
-        <p class="mb-0">&copy; 2024 Cusco Directo - Conectando Maestros con el Mundo</p>
+    <footer class="text-center p-10 text-gray-400 text-[10px] uppercase tracking-[3px]">
+        © 2024 Minka Community - Cusco, Perú
     </footer>
 
+    <script>
+        function comprar(nombre) {
+            alert("Gracias por elegir " + nombre + ". Estás preservando la técnica ancestral de Cusco. Para completar la compra, por favor contáctanos o inicia sesión.");
+        }
+    </script>
 </body>
 </html>
