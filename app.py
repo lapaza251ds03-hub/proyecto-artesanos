@@ -5,16 +5,12 @@ import psycopg2
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-# Usará una clave secreta de la nube o la tuya por defecto
 app.secret_key = os.environ.get('SECRET_KEY', 'clave_secreta_cusco_directo')
 
 UPLOAD_FOLDER = os.path.join('static', 'img', 'productos')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def get_db_connection():
-    # LA MAGIA ESTÁ AQUÍ:
-    # Si detecta DATABASE_URL (está en internet/Render), se conecta a la nube.
-    # Si no la detecta (está en tu laptop), usa tus datos locales.
     db_url = os.environ.get('DATABASE_URL')
     if db_url:
         return psycopg2.connect(db_url)
@@ -26,7 +22,47 @@ def get_db_connection():
         password="iproavatec_36" 
     )
 
+# --- 1. NUEVA RUTA PRINCIPAL: CATÁLOGO PÚBLICO ---
 @app.route('/')
+def catalogo():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Traemos: nombre(0), precio(1), pago(2), horas(3), dificultad(4), imagen(5), id(6)
+        cur.execute('SELECT prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, id FROM productos')
+        raw_productos = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        productos = []
+        for p in raw_productos:
+            lista_p = list(p)
+            if lista_p[5] is None: 
+                lista_p[5] = 'default.jpg'
+            productos.append(lista_p)
+            
+        return render_template('catalogo.html', productos=productos)
+    except Exception as e:
+        return "Error al cargar catalogo: " + str(e)
+
+# --- 2. RUTA DE COMPRA (ELIMINAR) ---
+@app.route('/comprar/<int:id>')
+def comprar(id):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM productos WHERE id = %s', (id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect(url_for('catalogo'))
+    except Exception as e:
+        return "Error al procesar compra: " + str(e)
+
+@app.route('/home')
 def home():
     if 'username' in session:
         return redirect(url_for('vista_maestro')) if session['rol'] == 'maestro' else redirect(url_for('vista_cliente'))
@@ -56,24 +92,7 @@ def login():
 @app.route('/cliente')
 def vista_cliente():
     if session.get('rol') != 'cliente': return redirect(url_for('home'))
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url FROM productos')
-        raw_productos = cur.fetchall()
-        cur.close()
-        conn.close()
-        
-        productos = []
-        for p in raw_productos:
-            lista_p = list(p)
-            if lista_p[5] is None: 
-                lista_p[5] = 'default.jpg'
-            productos.append(lista_p)
-            
-        return render_template('cliente.html', productos=productos)
-    except Exception as e:
-        return "Error al cargar catalogo: " + str(e)
+    return redirect(url_for('catalogo')) # El cliente ahora usa el catálogo principal
 
 @app.route('/maestro')
 def vista_maestro():
@@ -115,9 +134,8 @@ def registrar():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('catalogo'))
 
 if __name__ == '__main__':
-    # Render usa el puerto que él quiere, tu laptop usa el 5000
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
