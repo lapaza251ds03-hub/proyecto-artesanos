@@ -102,6 +102,17 @@ def registrar():
     except Exception as e:
         return "Error al registrar: " + str(e)
 
+@app.route('/comprar/<int:id>')
+def comprar_producto(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Esto elimina el producto para siempre de la base de datos
+    cur.execute('DELETE FROM productos WHERE id = %s', (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect('/') # Regresa al catálogo actualizado
+
 @app.route('/logout')
 def logout():
     session.clear()
