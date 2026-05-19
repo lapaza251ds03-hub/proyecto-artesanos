@@ -29,9 +29,9 @@
             {% for p in productos %}
             <div class="glass-card bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100">
                 <div class="aspect-[4/5] overflow-hidden bg-gray-200 relative group">
-                    <img src="{{ p[5] }}" 
-                         class="w-full h-full object-cover transition duration-700 group-hover:scale-110"
-                         onerror="this.src='https://via.placeholder.com/400x500?text=Artesania'">
+                    <img src="{{ url_for('static', filename='img/productos/' + p[5]) }}" 
+                        class="w-full h-full object-cover transition duration-700 group-hover:scale-110"ç
+                        onerror="this.src='https://via.placeholder.com/400x500?text=Artesania'">
                     
                     <div class="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase">
                         Evidencia Certificada
