@@ -17,5 +17,12 @@
             <button type="submit" class="btn-principal mt-4">Ingresar</button>
         </form>
     </div>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+    <div class="alert alert-info">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 </body>
 </html>
