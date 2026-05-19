@@ -19,16 +19,16 @@ def get_db_connection():
         host="localhost",
         database="artesania_db",
         user="postgres",
-        password="iproavatec_36" 
+        password="password_local" 
     )
 
-# 1. LA PORTADA AHORA ES EL CATÁLOGO (Para todo el mundo)
+# 1. PORTADA: CATÁLOGO PÚBLICO
 @app.route('/')
 def catalogo_publico():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Traemos los datos. Nota: El ID es importante para la compra
+        # Traemos todos los campos incluyendo el ID (p[6])
         cur.execute('SELECT prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, id FROM productos')
         raw_productos = cur.fetchall()
         cur.close()
@@ -44,7 +44,26 @@ def catalogo_publico():
     except Exception as e:
         return "Error en catálogo: " + str(e)
 
-# 2. EL LOGIN (Decide a dónde enviarte)
+# 2. RUTA DE COMPRA (Para que no salga el error 404 de tu foto)
+@app.route('/comprar/<int:id>')
+def comprar(id):
+    # Si no ha iniciado sesión, lo mandamos al login
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    # Si ya inició sesión (como turista o maestro), lo deja "comprar" (borrar)
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM productos WHERE id = %s', (id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect(url_for('catalogo_publico'))
+    except Exception as e:
+        return "Error al procesar compra: " + str(e)
+
+# 3. LOGIN CON REDIRECCIÓN SEGÚN ROL
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -61,24 +80,22 @@ def login():
             if result:
                 session['username'] = user
                 session['rol'] = result[0]
-                # SI ES MAESTRO -> VA A MAESTRO
+                # Si es maestro -> panel maestro
                 if session['rol'] == 'maestro':
                     return redirect(url_for('vista_maestro'))
-                # SI ES CLIENTE/TURISTA -> VA A CLIENTE.HTML
+                # Si es turista/cliente -> interfaz cliente
                 else:
                     return redirect(url_for('vista_cliente'))
             
-            return "Error: Usuario o contraseña incorrectos"
+            return "Error: Credenciales inválidas"
         except Exception as e:
             return "Error de conexión: " + str(e)
     return render_template('login.html')
 
-# 3. INTERFAZ DE CLIENTE (Solo para el rol cliente/turista)
+# 4. INTERFAZ DE CLIENTE (Turista)
 @app.route('/cliente')
 def vista_cliente():
-    if 'username' not in session or session.get('rol') == 'maestro':
-        return redirect(url_for('login'))
-    
+    if 'username' not in session: return redirect(url_for('login'))
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -90,14 +107,14 @@ def vista_cliente():
     except Exception as e:
         return "Error en vista cliente: " + str(e)
 
-# 4. INTERFAZ DE MAESTRO
+# 5. INTERFAZ DE MAESTRO
 @app.route('/maestro')
 def vista_maestro():
     if 'username' not in session or session.get('rol') != 'maestro':
         return redirect(url_for('login'))
     return render_template('maestro.html', usuario=session['username'])
 
-# 5. REGISTRAR PRODUCTOS (Solo maestros)
+# 6. REGISTRAR PRODUCTO (Solo maestros)
 @app.route('/registrar', methods=['POST'])
 def registrar():
     if session.get('rol') != 'maestro': return redirect(url_for('login'))
