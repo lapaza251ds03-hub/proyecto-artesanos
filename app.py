@@ -4,24 +4,6 @@ from flask import Flask, render_template, request, redirect, url_for, session
 import psycopg2
 from werkzeug.utils import secure_filename
 
-from authlib.integrations.flask_client import OAuth
-
-# Configuración de OAuth
-oauth = OAuth(app)
-google = oauth.register(
-    name='google',
-    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
-    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
-    access_token_url='https://oauth2.googleapis.com/token',
-    access_token_params=None,
-    authorize_url='https://accounts.google.com/o/oauth2/auth',
-    authorize_params=None,
-    api_base_url='https://www.googleapis.com/oauth2/v1/',
-    userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
-    client_kwargs={'scope': 'openid email profile'},
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
-)
-
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'clave_secreta_minka_community')
 
@@ -91,57 +73,6 @@ def login():
         except Exception as e:
             return "Error de conexión en login: " + str(e)
     return render_template('login.html')
-
-# Ruta que activa el botón "Iniciar Sesión con Google"
-@app.route('/login/google')
-def login_google():
-    # Detecta automáticamente si estás en local o en Render para el retorno
-    redirect_uri = url_for('google_callback', _external=True)
-    return google.authorize_redirect(redirect_uri)
-
-# Ruta a la que Google responde con los datos del usuario
-@app.route('/login/callback')
-def google_callback():
-    try:
-        token = google.authorize_access_token()
-        resp = google.get('userinfo')
-        user_info = resp.json()
-        
-        email = user_info['email']
-        username = user_info.get('name', email.split('@')[0]) # Si no hay nombre, usa el texto antes del @
-        
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # 1. Buscamos si el correo ya está registrado en Neon
-        cur.execute('SELECT id, username, rol FROM usuarios WHERE email = %s', (email,))
-        usuario = cur.fetchone()
-        
-        if usuario:
-            # Si ya existe, iniciamos sesión directo
-            session['usuario_id'] = usuario[0]
-            session['username'] = usuario[1]
-            session['rol'] = usuario[2]
-        else:
-            # Si NO existe, lo registramos automáticamente como 'cliente' (Fase 1 del flujo)
-            cur.execute('''INSERT INTO usuarios (username, email, password, rol) 
-                           VALUES (%s, %s, %s, %s) RETURNING id''',
-                        (username, email, 'oauth_google', 'cliente'))
-            nuevo_id = cur.fetchone()[0]
-            conn.commit()
-            
-            session['usuario_id'] = nuevo_id
-            session['username'] = username
-            session['rol'] = 'cliente'
-            
-        cur.close()
-        conn.close()
-        
-        # Al ser turista/cliente, lo mandamos directo a la tienda con su carrito
-        return redirect(url_for('vista_cliente'))
-        
-    except Exception as e:
-        return "Error en la autenticación con Google: " + str(e)
 
 @app.route('/cliente')
 def vista_cliente():
