@@ -3,20 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minka Comunity - Login</title>
+    <title>Minka Community - Acceso</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="flex items-center justify-center min-h-screen">
-    <div class="glass-card w-full max-w-sm text-center">
-        <h1 class="font-serif text-4xl text-[#8d2323] mb-2">Minka Comunity</h1>
-        <p class="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-8">Identidad y Comercio Ético</p>
-        
-        <form action="/login" method="POST" class="flex flex-col gap-4">
-            <input type="text" name="username" placeholder="Usuario" required>
-            <input type="password" name="password" placeholder="Contraseña" required>
-            <button type="submit" class="btn-principal mt-4">Ingresar</button>
+<body class="bg-[#fdfaf7] min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-6 md:p-10 rounded-2xl shadow-xl border border-gray-100 max-w-md w-full">
+        <div class="text-center mb-8">
+            <div class="w-12 h-12 bg-[#8d2323] rounded-full flex items-center justify-center text-white font-serif font-bold text-xl mx-auto mb-3">M</div>
+            <h1 class="font-serif text-3xl text-[#3e2723]">Minka Community</h1>
+            <p class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1">Ingresa a la red de artesanía ética</p>
+        </div>
+
+        <form action="/login" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-[10px] font-bold uppercase mb-2 text-gray-500 tracking-wider">Usuario / Ayni</label>
+                <input type="text" name="username" class="w-full p-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8d2323] text-sm" placeholder="Ej. maestro_cusco" required>
+            </div>
+            
+            <div>
+                <label class="block text-[10px] font-bold uppercase mb-2 text-gray-500 tracking-wider">Contraseña</label>
+                <input type="password" name="password" class="w-full p-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8d2323] text-sm" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="w-full bg-[#3e2723] text-white p-4 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#2b1b19] transition-colors shadow-md shadow-gray-200">
+                Iniciar Sesión
+            </button>
         </form>
+
+        <div class="relative my-8 flex items-center justify-center">
+            <div class="border-t border-gray-200 w-full"></div>
+            <span class="absolute bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">O</span>
+        </div>
+
+        <div class="space-y-3">
+            <a href="/login/google" class="flex items-center justify-center gap-3 w-full bg-white border-2 border-gray-100 text-gray-700 p-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 hover:border-gray-200 transition-all shadow-sm active:scale-[0.99]">
+                <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/web-24dp/logo_googleg_color_24dp.png" class="w-5 h-5" alt="Google Logo">
+                Continuar con Gmail
+            </a>
+            <p class="text-[9px] text-gray-400 text-center italic mt-2">
+                * Si eres turista y no tienes cuenta, se creará una automáticamente al pulsar este botón.
+            </p>
+        </div>
+
+        <div class="text-center mt-8 pt-4 border-t border-gray-50">
+            <a href="/" class="text-[10px] font-bold uppercase tracking-wider text-[#8d2323] hover:underline">
+                ← Volver al Catálogo Público
+            </a>
+        </div>
     </div>
+
 </body>
 </html>
