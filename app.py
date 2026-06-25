@@ -144,9 +144,12 @@ def registrar():
     try:
         prenda = request.form['prenda']
         precio = float(request.form['precio'])
-        pago_artesano = precio * 0.8  # Impacto ético directo automático (80%)
+        pago_artesano = precio * 0.8  # 80% ético directo
         horas = request.form['horas']
         dificultad = request.form['dificultad']
+        
+        # CAPTURAMOS EL ID DEL MAESTRO LOGUEADO
+        maestro_id = session['usuario_id'] 
         
         file = request.files.get('archivo')
         filename = "default.jpg"
@@ -158,10 +161,10 @@ def registrar():
 
         conn = get_db_connection()
         cur = conn.cursor()
-        # Insertando respetando el orden exacto de tu nuevo diagrama de Neon
-        cur.execute('''INSERT INTO productos (prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url) 
-                       VALUES (%s, %s, %s, %s, %s, %s)''',
-                    (prenda, precio, pago_artesano, horas, dificultad, filename))
+        # Añadido 'maestro_id' al INSERT final
+        cur.execute('''INSERT INTO productos (prenda, precio_total, pago_artesano, tiempo_horas, Clinical_difficulty, dificultad, imagen_url, maestro_id) 
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)''',
+                    (prenda, precio, pago_artesano, horas, dificultad, filename, maestro_id))
         conn.commit()
         cur.close()
         conn.close()
