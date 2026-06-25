@@ -14,11 +14,19 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # ==========================================
 # CONFIGURACIÓN DE GOOGLE OAUTH 2.0
 # ==========================================
+# ==========================================
+# CONFIGURACIÓN DE GOOGLE OAUTH 2.0
+# ==========================================
+# ==========================================
+# CONFIGURACIÓN DE GOOGLE OAUTH 2.0
+# ==========================================
 oauth = OAuth(app)
 google = oauth.register(
     name='google',
-    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
-    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+    # Tus datos reales integrados
+    client_id='192159172563-qckmmouf6827rttsutmjhl8skc8kkc01.apps.googleusercontent.com',
+    client_secret='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',
+    
     access_token_url='https://oauth2.googleapis.com/token',
     access_token_params=None,
     authorize_url='https://accounts.google.com/o/oauth2/auth',
@@ -28,7 +36,6 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'},
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
 )
-
 # CONEXIÓN A LA BASE DE DATOS NEON
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
