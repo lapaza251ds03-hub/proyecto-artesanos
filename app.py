@@ -143,6 +143,132 @@ def logout():
     session.clear()
     return redirect(url_for('catalogo_publico'))
 
+# PASO 3 Y 4: Añadir un producto al carrito (o crearlo si no existe)
+@app.route('/carrito/anadir/<int:producto_id>')
+def anadir_al_carrito(producto_id):
+    if 'usuario_id' not in session:
+        return redirect(url_for('login'))
+    
+    usuario_id = session['usuario_id']
+    
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # 1. Buscamos si el usuario ya tiene un carrito 'pendiente' activo
+        cur.execute("SELECT id FROM compras WHERE usuario_id = %s AND estado = 'pendiente'", (usuario_id,))
+        carrito = cur.fetchone()
+        
+        if not carrito:
+            # Si no tiene carrito activo, lo creamos (Paso 3 de tu flujo)
+            cur.execute("INSERT INTO compras (usuario_id, total, estado) VALUES (%s, 0.00, 'pendiente') RETURNING id", (usuario_id,))
+            compra_id = cur.fetchone()[0]
+        else:
+            compra_id = carrito[0]
+            
+        # 2. Buscamos el precio del producto que se quiere añadir
+        cur.execute("SELECT precio_total FROM productos WHERE id = %s", (producto_id,))
+        producto = cur.fetchone()
+        if not producto:
+            return "Producto no encontrado", 404
+        precio_unitario = producto[0]
+        
+        # 3. Verificamos si el producto ya estaba en el detalle de este carrito
+        cur.execute("SELECT id, cantidad FROM detalle_compras WHERE compra_id = %s AND producto_id = %s", (compra_id, producto_id))
+        detalle_existente = cur.fetchone()
+        
+        if detalle_existente:
+            # Si ya existe, le sumamos 1 a la cantidad
+            nueva_cantidad = detalle_existente[1] + 1
+            cur.execute("UPDATE detalle_compras SET cantidad = %s WHERE id = %s", (nueva_cantidad, detalle_existente[0]))
+        else:
+            # Si es nuevo, lo insertamos al detalle (Paso 4 de tu flujo)
+            cur.execute("INSERT INTO detalle_compras (compra_id, producto_id, cantidad, precio_unitario) VALUES (%s, %s, 1, %s)", 
+                        (compra_id, producto_id, precio_unitario))
+            
+        # 4. Recalculamos el total del carrito sumando todos sus detalles
+        cur.execute("SELECT SUM(cantidad * precio_unitario) FROM detalle_compras WHERE compra_id = %s", (compra_id,))
+        nuevo_total = cur.fetchone()[0] or 0.00
+        
+        # 5. Actualizamos el total en la tabla compras
+        cur.execute("UPDATE compras SET total = %s WHERE id = %s", (nuevo_total, compra_id))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        # Redirigimos a la vista del cliente para que siga viendo la tienda
+        return redirect(url_for('vista_cliente'))
+        
+    except Exception as e:
+        return "Error al añadir al carrito: " + str(e)
+
+
+# PASO 5: Ver el Carrito (Comparar, Modificar o Eliminar ítems)
+@app.route('/carrito')
+def ver_carrito():
+    if 'usuario_id' not in session:
+        return redirect(url_for('login'))
+        
+    usuario_id = session['usuario_id']
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Buscamos el carrito activo del usuario
+        cur.execute("SELECT id, total FROM compras WHERE usuario_id = %s AND estado = 'pendiente'", (usuario_id,))
+        carrito = cur.fetchone()
+        
+        if not carrito:
+            # Carrito vacío por defecto si no hay registros pendientes
+            return render_template('carrito.html', items=[], total=0.00)
+            
+        compra_id = carrito[0]
+        total_carrito = carrito[1]
+        
+        # Hacemos un JOIN para traer los datos del producto mezclados con los del detalle
+        cur.execute('''
+            SELECT d.id, p.prenda, d.cantidad, d.precio_unitario, (d.cantidad * d.precio_unitario) as subtotal, p.imagen_url, p.pago_artesano, p.tiempo_horas
+            FROM detalle_compras d
+            JOIN productos p ON d.producto_id = p.id
+            WHERE d.compra_id = %s
+        ''', (compra_id,))
+        items = cur.fetchall()
+        
+        # Calculamos el Impacto Ético Total (Suma del 80% de lo acumulado para los artesanos)
+        impacto_total = sum(float(item[6]) * int(item[2]) for item in items)
+        
+        cur.close()
+        conn.close()
+        
+        return render_template('carrito.html', items=items, total=total_carrito, impacto_total=impacto_total)
+    except Exception as e:
+        return "Error al cargar el carrito: " + str(e)
+
+
+# PASO 6: Simular el pago y cerrar el carrito activo
+@app.route('/carrito/pagar')
+def pagar_carrito():
+    if 'usuario_id' not in session:
+        return redirect(url_for('login'))
+        
+    usuario_id = session['usuario_id']
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Cambiamos el estado de 'pendiente' a 'pagado'
+        cur.execute("UPDATE compras SET estado = 'pagado' WHERE usuario_id = %s AND estado = 'pendiente'", (usuario_id,))
+        conn.commit()
+        
+        cur.close()
+        conn.close()
+        
+        # Al pagar con éxito, lo mandamos de vuelta a su panel con el carrito limpio
+        return "¡Compra realizada con éxito! Tu orden ha sido guardada en tu historial. <a href='/cliente'>Volver a la tienda</a>"
+    except Exception as e:
+        return "Error al procesar el pago: " + str(e)
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
