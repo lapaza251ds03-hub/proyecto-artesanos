@@ -74,18 +74,19 @@ def login():
             return "Error de conexión en login: " + str(e)
     return render_template('login.html')
 
-# 3. INTERFAZ DE CLIENTE (Turista con sesión activa)
 @app.route('/cliente')
 def vista_cliente():
-    if 'username' not in session: 
+    if 'usuario_id' not in session: 
         return redirect(url_for('login'))
+        
+    usuario_id = session['usuario_id']
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        
+        # 1. Traemos todos los productos para la tienda
         cur.execute('SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url FROM productos')
         raw_productos = cur.fetchall()
-        cur.close()
-        conn.close()
         
         productos = []
         for p in raw_productos:
@@ -93,7 +94,38 @@ def vista_cliente():
             if not lista_p[6]: lista_p[6] = 'default.jpg'
             productos.append(lista_p)
             
-        return render_template('cliente.html', productos=productos, usuario=session['username'])
+        # 2. Traemos el carrito activo ('pendiente') de este usuario específico
+        cur.execute("SELECT id, total FROM compras WHERE usuario_id = %s AND estado = 'pendiente'", (usuario_id,))
+        carrito = cur.fetchone()
+        
+        items_carrito = []
+        total_carrito = 0.00
+        impacto_total = 0.00
+        
+        if carrito:
+            compra_id = carrito[0]
+            total_carrito = carrito[1]
+            # JOIN para traer los detalles junto con el nombre e imagen del producto
+            cur.execute('''
+                SELECT d.id, p.prenda, d.cantidad, d.precio_unitario, (d.cantidad * d.precio_unitario) as subtotal, p.imagen_url, p.pago_artesano
+                FROM detalle_compras d
+                JOIN productos p ON d.producto_id = p.id
+                WHERE d.compra_id = %s
+            ''', (compra_id,))
+            items_carrito = cur.fetchall()
+            # Calculamos el impacto ético acumulado del carrito
+            impacto_total = sum(float(item[6]) * int(item[2]) for item in items_carrito)
+            
+        cur.close()
+        conn.close()
+        
+        # Le mandamos TODO a la misma plantilla cliente.html
+        return render_template('cliente.html', 
+                               productos=productos, 
+                               items=items_carrito, 
+                               total=total_carrito, 
+                               impacto_total=impacto_total, 
+                               usuario=session['username'])
     except Exception as e:
         return "Error en vista cliente: " + str(e)
 
