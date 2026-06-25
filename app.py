@@ -8,6 +8,9 @@ from authlib.integrations.flask_client import OAuth
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'clave_secreta_minka_community')
 
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 UPLOAD_FOLDER = os.path.join('static', 'img', 'productos')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
