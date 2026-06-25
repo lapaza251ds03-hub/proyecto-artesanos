@@ -5,7 +5,7 @@ import psycopg2
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'clave_secreta_cusco_directo')
+app.secret_key = os.environ.get('SECRET_KEY', 'clave_secreta_minka_community')
 
 UPLOAD_FOLDER = os.path.join('static', 'img', 'productos')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -22,14 +22,14 @@ def get_db_connection():
         password="password_local" 
     )
 
-# 1. PORTADA: CATÁLOGO PÚBLICO
+# 1. CATÁLOGO PÚBLICO (Fase: Portada General)
 @app.route('/')
 def catalogo_publico():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Traemos todos los campos incluyendo el ID (p[6])
-        cur.execute('SELECT prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, id FROM productos')
+        # Adaptado a la nueva estructura de la tabla productos (7 campos)
+        cur.execute('SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url FROM productos')
         raw_productos = cur.fetchall()
         cur.close()
         conn.close()
@@ -37,33 +37,14 @@ def catalogo_publico():
         productos = []
         for p in raw_productos:
             lista_p = list(p)
-            if not lista_p[5]: lista_p[5] = 'default.jpg'
+            if not lista_p[6]: lista_p[6] = 'default.jpg'  # p[6] es imagen_url ahora
             productos.append(lista_p)
             
         return render_template('catalogo.html', productos=productos)
     except Exception as e:
-        return "Error en catálogo: " + str(e)
+        return "Error en catálogo público: " + str(e)
 
-# 2. RUTA DE COMPRA (Para que no salga el error 404 de tu foto)
-@app.route('/comprar/<int:id>')
-def comprar(id):
-    # Si no ha iniciado sesión, lo mandamos al login
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    
-    # Si ya inició sesión (como turista o maestro), lo deja "comprar" (borrar)
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute('DELETE FROM productos WHERE id = %s', (id,))
-        conn.commit()
-        cur.close()
-        conn.close()
-        return redirect(url_for('catalogo_publico'))
-    except Exception as e:
-        return "Error al procesar compra: " + str(e)
-
-# 3. LOGIN CON REDIRECCIÓN SEGÚN ROL
+# 2. LOGIN CON CONTROL DE ID DE USUARIO (Para amarrar el carrito)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -72,35 +53,36 @@ def login():
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            cur.execute('SELECT rol FROM usuarios WHERE username = %s AND password = %s', (user, pw))
+            # Traemos el ID además del rol para guardarlo en la sesión del navegador
+            cur.execute('SELECT id, rol FROM usuarios WHERE username = %s AND password = %s', (user, pw))
             result = cur.fetchone()
             cur.close()
             conn.close()
             
             if result:
+                session['usuario_id'] = result[0]  # <--- CRUCIAL: Guardamos el ID del usuario
                 session['username'] = user
-                session['rol'] = result[0]
-                # Si es maestro -> panel maestro
+                session['rol'] = result[1]
+                
                 if session['rol'] == 'maestro':
                     return redirect(url_for('vista_maestro'))
-                # Si es turista/cliente -> interfaz cliente
                 else:
                     return redirect(url_for('vista_cliente'))
             
-            return "Error: Credenciales inválidas"
+            return "Error: Credenciales incorrectas."
         except Exception as e:
-            return "Error de conexión: " + str(e)
+            return "Error de conexión en login: " + str(e)
     return render_template('login.html')
 
-# 4. INTERFAZ DE CLIENTE (Turista)
+# 3. INTERFAZ DE CLIENTE (Turista con sesión activa)
 @app.route('/cliente')
 def vista_cliente():
-    if 'username' not in session: return redirect(url_for('login'))
+    if 'username' not in session: 
+        return redirect(url_for('login'))
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # IMPORTANTE: Hemos añadido el ID al final de la consulta (es el p[6])
-        cur.execute('SELECT prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, id FROM productos')
+        cur.execute('SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url FROM productos')
         raw_productos = cur.fetchall()
         cur.close()
         conn.close()
@@ -108,27 +90,29 @@ def vista_cliente():
         productos = []
         for p in raw_productos:
             lista_p = list(p)
-            if not lista_p[5]: lista_p[5] = 'default.jpg'
+            if not lista_p[6]: lista_p[6] = 'default.jpg'
             productos.append(lista_p)
             
-        return render_template('cliente.html', productos=productos)
+        return render_template('cliente.html', productos=productos, usuario=session['username'])
     except Exception as e:
         return "Error en vista cliente: " + str(e)
-# 5. INTERFAZ DE MAESTRO
+
+# 4. INTERFAZ DE MAESTRO (Alineado a los nuevos nombres de columnas)
 @app.route('/maestro')
 def vista_maestro():
     if 'username' not in session or session.get('rol') != 'maestro':
         return redirect(url_for('login'))
     return render_template('maestro.html', usuario=session['username'])
 
-# 6. REGISTRAR PRODUCTO (Solo maestros)
+# 5. REGISTRAR PRODUCTO (Fase: Publicación del Maestro)
 @app.route('/registrar', methods=['POST'])
 def registrar():
-    if session.get('rol') != 'maestro': return redirect(url_for('login'))
+    if session.get('rol') != 'maestro': 
+        return redirect(url_for('login'))
     try:
         prenda = request.form['prenda']
         precio = float(request.form['precio'])
-        pago_artesano = precio * 0.8
+        pago_artesano = precio * 0.8  # Impacto ético directo automático (80%)
         horas = request.form['horas']
         dificultad = request.form['dificultad']
         
@@ -142,6 +126,7 @@ def registrar():
 
         conn = get_db_connection()
         cur = conn.cursor()
+        # Insertando respetando el orden exacto de tu nuevo diagrama de Neon
         cur.execute('''INSERT INTO productos (prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url) 
                        VALUES (%s, %s, %s, %s, %s, %s)''',
                     (prenda, precio, pago_artesano, horas, dificultad, filename))
@@ -150,8 +135,9 @@ def registrar():
         conn.close()
         return redirect(url_for('vista_maestro'))
     except Exception as e:
-        return "Error al registrar: " + str(e)
+        return "Error al registrar producto: " + str(e)
 
+# 6. LOGOUT
 @app.route('/logout')
 def logout():
     session.clear()
