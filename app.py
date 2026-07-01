@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import psycopg2
 from werkzeug.utils import secure_filename
 from authlib.integrations.flask_client import OAuth
@@ -28,6 +28,7 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'},
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
 )
+
 # CONEXIÓN A LA BASE DE DATOS NEON
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
@@ -47,8 +48,8 @@ def catalogo_publico():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Modifica tu consulta actual para que se vea así:
-        cur.execute("SELECT id, nombre, precio, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos WHERE stock > 0;")
+        # Mantiene tus columnas exactas de la base de datos controlando el Stock
+        cur.execute("SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos WHERE stock > 0;")
         raw_productos = cur.fetchall()
         cur.close()
         conn.close()
@@ -78,7 +79,7 @@ def login():
             conn.close()
             
             if result:
-                session['usuario_id'] = result[0]  # ID clave para amarrar carritos
+                session['usuario_id'] = result[0]
                 session['username'] = user
                 session['rol'] = result[1]
                 
@@ -113,7 +114,6 @@ def google_callback():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Buscamos si ya existe el correo
         cur.execute('SELECT id, username, rol FROM usuarios WHERE email = %s', (email,))
         usuario = cur.fetchone()
         
@@ -122,7 +122,6 @@ def google_callback():
             session['username'] = usuario[1]
             session['rol'] = usuario[2]
         else:
-            # Registro automático en Neon si es nuevo
             cur.execute('''INSERT INTO usuarios (username, email, password, rol) 
                            VALUES (%s, %s, %s, %s) RETURNING id''',
                         (username, email, 'oauth_google', 'cliente'))
@@ -150,7 +149,8 @@ def vista_cliente():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        cur.execute('SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url FROM productos')
+        # Agregamos stock al select de la vista de cliente para poder bloquear botones si llega a 0
+        cur.execute('SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos')
         raw_productos = cur.fetchall()
         
         productos = []
@@ -170,7 +170,7 @@ def vista_cliente():
             compra_id = carrito[0]
             total_carrito = carrito[1]
             cur.execute('''
-                SELECT d.id, p.prenda, d.cantidad, d.precio_unitario, (d.cantidad * d.precio_unitario) as subtotal, p.imagen_url, p.pago_artesano
+                SELECT d.id, p.prenda, d.cantidad, d.precio_unitario, (d.cantidad * d.precio_unitario) as subtotal, p.imagen_url, p.pago_artesano, p.id
                 FROM detalle_compras d
                 JOIN productos p ON d.producto_id = p.id
                 WHERE d.compra_id = %s
@@ -212,10 +212,13 @@ def anadir_al_carrito(producto_id):
         else:
             compra_id = carrito[0]
             
-        cur.execute("SELECT precio_total FROM productos WHERE id = %s", (producto_id,))
+        cur.execute("SELECT precio_total, stock FROM productos WHERE id = %s", (producto_id,))
         producto = cur.fetchone()
-        if not producto:
-            return "Producto no encontrado", 404
+        if not producto or producto[1] <= 0:
+            cur.close()
+            conn.close()
+            return "Producto agotado o no encontrado", 400
+            
         precio_unitario = producto[0]
         
         cur.execute("SELECT id, cantidad FROM detalle_compras WHERE compra_id = %s AND producto_id = %s", (compra_id, producto_id))
@@ -248,6 +251,17 @@ def pagar_carrito():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        
+        # Descontamos el stock de cada producto que está en el carrito al pagar tradicionalmente
+        cur.execute('''
+            SELECT producto_id, cantidad FROM detalle_compras 
+            WHERE compra_id = (SELECT id FROM compras WHERE usuario_id = %s AND estado = 'pendiente')
+        ''', (usuario_id,))
+        items = cur.fetchall()
+        
+        for item in items:
+            cur.execute("UPDATE productos SET stock = stock - %s WHERE id = %s", (item[1], item[0]))
+            
         cur.execute("UPDATE compras SET estado = 'pagado' WHERE usuario_id = %s AND estado = 'pendiente'", (usuario_id,))
         conn.commit()
         cur.close()
@@ -274,6 +288,8 @@ def registrar():
         pago_artesano = precio * 0.8
         horas = request.form['horas']
         dificultad = request.form['dificultad']
+        # Capturamos el stock que define el maestro al crear la prenda (por defecto 1 si no se envía)
+        stock = int(request.form.get('stock', 1))
         maestro_id = session['usuario_id'] 
         
         file = request.files.get('archivo')
@@ -286,15 +302,39 @@ def registrar():
 
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('''INSERT INTO productos (prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, maestro_id) 
-                       VALUES (%s, %s, %s, %s, %s, %s, %s)''',
-                    (prenda, precio, pago_artesano, horas, dificultad, filename, maestro_id))
+        cur.execute('''INSERT INTO productos (prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, maestro_id, stock) 
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)''',
+                    (prenda, precio, pago_artesano, horas, dificultad, filename, maestro_id, stock))
         conn.commit()
         cur.close()
         conn.close()
         return redirect(url_for('vista_maestro'))
     except Exception as e:
         return "Error al registrar producto: " + str(e)
+
+# ==========================================
+# RUTA PASARELA DE PAGOS (CULQI INTEGRADO)
+# ==========================================
+@app.route('/procesar-pago-culqi', methods=['POST'])
+def procesar_pago_culqi():
+    data = request.get_json()
+    producto_id = data.get('producto_id')
+    token_id = data.get('token_id')
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        # Reducimos el stock del producto usando tus campos nativos
+        cur.execute("UPDATE productos SET stock = stock - 1 WHERE id = %s AND stock > 0;", (producto_id,))
+        conn.commit()
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
 
 # 6. LOGOUT
 @app.route('/logout')
@@ -305,24 +345,3 @@ def logout():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
-
-@app.route('/procesar-pago-culqi', methods=['POST'])
-def procesar_pago_culqi():
-    data = request.get_json()
-    producto_id = data.get('producto_id')
-    token_id = data.get('token_id') # Este token te servirá para ver el cargo en tu panel de Culqi
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
-    try:
-        # Reducimos el stock del producto en 1 unidad
-        cur.execute("UPDATE productos SET stock = stock - 1 WHERE id = %s;", (producto_id,))
-        conn.commit()
-        return jsonify({"status": "success"}), 200
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"status": "error", "message": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
