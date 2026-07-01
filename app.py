@@ -14,26 +14,11 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 UPLOAD_FOLDER = os.path.join('static', 'img', 'productos')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# ==========================================
-# CONFIGURACIÓN DE GOOGLE OAUTH 2.0
-# ==========================================
-# ==========================================
-# CONFIGURACIÓN DE GOOGLE OAUTH 2.0
-# ==========================================
-# ==========================================
-# CONFIGURACIÓN DE GOOGLE OAUTH 2.0
-# ==========================================
-# ==========================================
-# CONFIGURACIÓN DE GOOGLE OAUTH 2.0
-# ==========================================
 oauth = OAuth(app)
 google = oauth.register(
     name='google',
-    client_id='192159172563-qckmmouf6827rttsutmjhl8skc8kkc01.apps.googleusercontent.com',
-    
-    # He corregido la última letra para que sea exactamente la de tu credencial original
-    client_secret='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',
-    
+    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
     access_token_url='https://oauth2.googleapis.com/token',
     access_token_params=None,
     authorize_url='https://accounts.google.com/o/oauth2/auth',
