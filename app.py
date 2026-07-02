@@ -48,7 +48,7 @@ def catalogo_publico():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Selecciona el stock (p[7]) y filtra para que no aparezcan los de stock 0
+        # Filtramos para que en la portada general solo aparezcan productos con stock > 0
         cur.execute("SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos WHERE stock > 0;")
         raw_productos = cur.fetchall()
         cur.close()
@@ -146,7 +146,7 @@ def vista_cliente():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Obtenemos productos incluyendo su stock (p[7])
+        # Obtenemos productos incluyendo su stock (índice 7 en las tuplas)
         cur.execute('SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos')
         raw_productos = cur.fetchall()
         
@@ -187,7 +187,7 @@ def vista_cliente():
     except Exception as e:
         return "Error en vista cliente: " + str(e)
 
-# MOTOR DEL CARRITO
+# MOTOR DEL CARRITO (AÑADIR)
 @app.route('/carrito/anadir/<int:producto_id>')
 def anadir_al_carrito(producto_id):
     if 'usuario_id' not in session:
@@ -237,7 +237,7 @@ def anadir_al_carrito(producto_id):
     except Exception as e:
         return "Error al añadir al carrito: " + str(e)
 
-# PROCESAR EL CIERRE Y VACIADO TRAS PAGAR
+# MOTOR DEL CARRITO (PAGAR TRADICIONAL / LLAMADO POR CULQI)
 @app.route('/carrito/pagar')
 def pagar_carrito():
     if 'usuario_id' not in session:
@@ -248,6 +248,7 @@ def pagar_carrito():
         conn = get_db_connection()
         cur = conn.cursor()
         
+        # Descontamos el stock físico según las unidades de cada prenda comprada
         cur.execute('''
             SELECT producto_id, cantidad FROM detalle_compras 
             WHERE compra_id = (SELECT id FROM compras WHERE usuario_id = %s AND estado = 'pendiente')
@@ -265,7 +266,7 @@ def pagar_carrito():
     except Exception as e:
         return "Error al procesar el pago: " + str(e)
 
-# 4. INTERFAZ INTERMEDIA EXCLUSIVA PARA CULQI
+# 4. NUEVA INTERFAZ EXCLUSIVA PARA LA PASARELA DE CULQI
 @app.route('/resumen-pago')
 def resumen_pago():
     if 'usuario_id' not in session:
@@ -313,7 +314,7 @@ def registrar():
         pago_artesano = precio * 0.8
         horas = request.form['horas']
         dificultad = request.form['dificultad']
-        stock = int(request.form.get('stock', 1)) # Toma el valor enviado por el maestro
+        stock = int(request.form.get('stock', 1)) # Captura el stock digitado
         maestro_id = session['usuario_id'] 
         
         file = request.files.get('archivo')
