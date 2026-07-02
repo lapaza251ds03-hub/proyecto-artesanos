@@ -42,14 +42,29 @@ def get_db_connection():
         password="password_local" 
     )
 
-# 1. CATÁLOGO PÚBLICO
+# 1. CATÁLOGO PÚBLICO (CON BÚSQUEDA Y NOMBRE DE MAESTRO)
 @app.route('/')
 def catalogo_publico():
     try:
+        q = request.args.get('q', '').strip()
         conn = get_db_connection()
         cur = conn.cursor()
-        # Filtramos para que en la portada general solo aparezcan productos con stock > 0
-        cur.execute("SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos WHERE stock > 0;")
+        
+        # Consulta base uniendo la tabla usuarios para obtener el nombre del maestro
+        query = """
+            SELECT p.id, p.prenda, p.precio_total, p.pago_artesano, p.tiempo_horas, p.dificultad, p.imagen_url, p.stock, u.username 
+            FROM productos p
+            LEFT JOIN usuarios u ON p.maestro_id = u.id
+            WHERE p.stock > 0
+        """
+        
+        if q:
+            query += " AND (p.prenda ILIKE %s OR u.username ILIKE %s);"
+            cur.execute(query, (f'%{q}%', f'%{q}%'))
+        else:
+            query += ";"
+            cur.execute(query)
+            
         raw_productos = cur.fetchall()
         cur.close()
         conn.close()
@@ -60,94 +75,36 @@ def catalogo_publico():
             if not lista_p[6]: lista_p[6] = 'default.jpg'
             productos.append(lista_p)
             
-        return render_template('catalogo.html', productos=productos)
+        return render_template('catalogo.html', productos=productos, busqueda=q)
     except Exception as e:
         return "Error en catálogo público: " + str(e)
 
-# 2. LOGIN TRADICIONAL
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        user = request.form['username']
-        pw = request.form['password']
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute('SELECT id, rol FROM usuarios WHERE username = %s AND password = %s', (user, pw))
-            result = cur.fetchone()
-            cur.close()
-            conn.close()
-            
-            if result:
-                session['usuario_id'] = result[0]
-                session['username'] = user
-                session['rol'] = result[1]
-                
-                if session['rol'] == 'maestro':
-                    return redirect(url_for('vista_maestro'))
-                else:
-                    return redirect(url_for('vista_cliente'))
-            
-            return "Error: Credenciales incorrectas."
-        except Exception as e:
-            return "Error de conexión en login: " + str(e)
-    return render_template('login.html')
 
-# LOGIN CON GOOGLE
-@app.route('/login/google')
-def login_google():
-    redirect_uri = url_for('google_callback', _external=True)
-    return google.authorize_redirect(redirect_uri)
-
-@app.route('/login/callback')
-def google_callback():
-    try:
-        token = google.authorize_access_token()
-        resp = google.get('userinfo')
-        user_info = resp.json()
-        
-        email = user_info['email']
-        username = user_info.get('name', email.split('@')[0])
-        
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT id, username, rol FROM usuarios WHERE email = %s', (email,))
-        usuario = cur.fetchone()
-        
-        if usuario:
-            session['usuario_id'] = usuario[0]
-            session['username'] = usuario[1]
-            session['rol'] = usuario[2]
-        else:
-            cur.execute('''INSERT INTO usuarios (username, email, password, rol) 
-                           VALUES (%s, %s, %s, %s) RETURNING id''',
-                        (username, email, 'oauth_google', 'cliente'))
-            nuevo_id = cur.fetchone()[0]
-            conn.commit()
-            
-            session['usuario_id'] = nuevo_id
-            session['username'] = username
-            session['rol'] = 'cliente'
-            
-        cur.close()
-        conn.close()
-        return redirect(url_for('vista_cliente'))
-    except Exception as e:
-        return "Error en la autenticación con Google: " + str(e)
-
-# 3. INTERFAZ DE CLIENTE
+# 3. INTERFAZ DE CLIENTE (CON BÚSQUEDA Y NOMBRE DE MAESTRO)
 @app.route('/cliente')
 def vista_cliente():
     if 'usuario_id' not in session: 
         return redirect(url_for('login'))
         
     usuario_id = session['usuario_id']
+    q = request.args.get('q', '').strip()
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Obtenemos productos incluyendo su stock (índice 7 en las tuplas)
-        cur.execute('SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos')
+        # Consulta incluyendo el username del maestro
+        query = """
+            SELECT p.id, p.prenda, p.precio_total, p.pago_artesano, p.tiempo_horas, p.dificultad, p.imagen_url, p.stock, u.username 
+            FROM productos p
+            LEFT JOIN usuarios u ON p.maestro_id = u.id
+        """
+        
+        if q:
+            query += " WHERE (p.prenda ILIKE %s OR u.username ILIKE %s);"
+            cur.execute(query, (f'%{q}%', f'%{q}%'))
+        else:
+            cur.execute(query)
+            
         raw_productos = cur.fetchall()
         
         productos = []
@@ -183,7 +140,8 @@ def vista_cliente():
                                items=items_carrito, 
                                total=total_carrito, 
                                impacto_total=impacto_total, 
-                               usuario=session['username'])
+                               usuario=session['username'],
+                               busqueda=q)
     except Exception as e:
         return "Error en vista cliente: " + str(e)
 
