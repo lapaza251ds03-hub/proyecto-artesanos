@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minka Community - Pasarela de Pago Seguro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://checkout.culqi.com/js/v4"></script>
+</head>
+<body class="bg-[#fdfaf7] min-h-screen flex flex-col justify-between">
+
+    <nav class="p-4 md:p-6 flex justify-between items-center bg-white shadow-sm sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-[#8d2323] rounded-full flex items-center justify-center text-white font-serif font-bold">M</div>
+            <span class="font-serif text-lg md:text-xl text-[#3e2723]">Minka Checkout</span>
+        </div>
+        <a href="/cliente" class="text-[10px] text-gray-500 font-bold hover:underline uppercase tracking-wider">
+            ← Volver a la Tienda
+        </a>
+    </nav>
+
+    <div class="flex-1 flex items-center justify-center p-4">
+        <div class="bg-white max-w-md w-full rounded-2xl p-6 md:p-8 shadow-md border border-gray-100">
+            
+            <div class="text-center mb-6 border-b border-gray-50 pb-4">
+                <span class="text-[9px] font-bold text-orange-700 uppercase tracking-widest bg-orange-50 px-3 py-1 rounded-full">Transacción Protegida</span>
+                <h2 class="font-serif text-2xl text-[#3e2723] mt-2 font-bold">Resumen de tu Orden</h2>
+                <p class="text-[11px] text-gray-400 mt-0.5">Por favor, confirma los detalles antes de pagar</p>
+            </div>
+
+            <div class="space-y-3 mb-6 max-h-40 overflow-y-auto bg-gray-50/50 border border-gray-100 p-4 rounded-xl pr-1">
+                {% for item in items %}
+                <div class="flex justify-between items-center text-xs text-gray-600">
+                    <span class="truncate pr-4">{{ item[0] }} <b class="text-[#3e2723]">x{{ item[1] }}</b></span>
+                    <span class="font-serif font-bold text-gray-800 flex-shrink-0">S/ {{ "%.2f"|format(item[3]) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="flex justify-between items-center bg-orange-50/30 border border-orange-100/50 p-4 rounded-xl mb-6">
+                <span class="text-xs font-bold text-gray-500 uppercase">Monto Final a Cargo</span>
+                <span class="font-serif text-2xl text-[#8d2323] font-black">S/ {{ "%.2f"|format(total) }}</span>
+            </div>
+
+            <button id="btn-activar-pasarela" class="w-full bg-[#8d2323] text-white py-3.5 rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-[#721c1c] active:scale-[0.98] transition-all shadow-md shadow-red-900/10">
+                Pagar con Tarjeta / Yape
+            </button>
+
+            <p class="text-[10px] text-gray-400 text-center mt-4">
+                Al hacer clic, se desplegará el formulario seguro para ingresar tus datos bancarios de prueba.
+            </p>
+        </div>
+    </div>
+
+    <footer class="text-center p-6 text-gray-400 text-[9px] uppercase tracking-[3px]">
+        © 2026 Minka Community · Conexión Segura Directa
+    </footer>
+
+    <script>
+        // Configuramos tu clave pública de pruebas por defecto
+        Culqi.publicKey = 'pk_test_a8470a273e97a3eb'; 
+
+        document.getElementById('btn-activar-pasarela').addEventListener('click', function (e) {
+            e.preventDefault();
+
+            // Extraemos el total de la orden de Flask de forma segura y lo pasamos a céntimos en JS puro
+            const totalSoles = parseFloat("{{ total }}");
+            const totalCentimos = Math.round(totalSoles * 100);
+
+            Culqi.settings({
+                title: 'Minka Community',
+                currency: 'PEN',
+                description: 'Adquisición Ética de Artesanías',
+                amount: totalCentimos
+            });
+
+            Culqi.options({
+                lang: 'auto',
+                installments: false,
+                style: {
+                    maincolor: '#8d2323' // Color guinda corporativo de Minka
+                }
+            });
+
+            // Lanza el modal flotante de Culqi
+            Culqi.open();
+        });
+
+        // Captura la respuesta de Culqi cuando el usuario ingresa una tarjeta simulada válida
+        function culqi() {
+            if (Culqi.token) {
+                console.log("Token emitido con éxito: ", Culqi.token.id);
+                // Redirige a la ruta del backend que descuenta stock y cierra el estado de la compra
+                window.location.href = "/carrito/pagar";
+            } else {
+                alert("Hubo un percance con la pasarela: " + Culqi.error.message);
+            }
+        }
+    </script>
+</body>
+</html>
