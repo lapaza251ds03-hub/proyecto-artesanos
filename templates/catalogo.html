@@ -46,8 +46,12 @@
                     <div class="p-6 flex flex-col flex-grow">
                         <h3 class="font-serif text-xl text-[#3e2723] font-bold tracking-tight mb-2">{{ p[1] }}</h3>
                         
-                        <div class="text-2xl font-black text-gray-900 mb-4">
+                        <div class="text-2xl font-black text-gray-900">
                             S/ {{ "%.2f"|format(p[2]) }}
+                        </div>
+
+                        <div class="text-[11px] font-bold text-orange-800 bg-orange-50/60 border border-orange-100/50 px-2.5 py-1 rounded-md w-fit mt-1 mb-4">
+                            Stock disponible: {{ p[7] }} unidades
                         </div>
 
                         <div class="bg-orange-50/50 rounded-xl p-4 space-y-2.5 border border-orange-100/50 mb-6 text-xs">
