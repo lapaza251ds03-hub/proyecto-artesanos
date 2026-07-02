@@ -21,6 +21,15 @@
         </div>
     </nav>
 
+    <div class="max-w-md mx-auto w-full px-4 mt-6 -mb-2">
+        <form action="/cliente" method="GET" class="flex gap-2 bg-white p-1.5 border border-orange-100 rounded-full shadow-sm">
+            <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar prenda o maestro..." class="w-full pl-4 text-xs bg-transparent focus:outline-none text-gray-700">
+            <button type="submit" class="bg-[#8d2323] text-white text-[10px] uppercase font-bold tracking-wider px-4 py-2 rounded-full hover:bg-[#6d1b1b] transition-colors">
+                Buscar
+            </button>
+        </form>
+    </div>
+
     <div class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         <div class="lg:col-span-2">
@@ -40,6 +49,8 @@
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between">
                         <div>
+                            <p class="text-[10px] font-bold text-amber-800/80 uppercase tracking-tight mb-0.5">Por: {{ p[8] if p[8] else "Minka Community" }}</p>
+                            
                             <h3 class="font-serif text-xl text-[#3e2723] mb-1">{{ p[1] }}</h3>
                             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">{{ p[4] }} Horas de Dedicación</p>
                             
@@ -59,6 +70,10 @@
                             {% endif %}
                         </div>
                     </div>
+                </div>
+                {% else %}
+                <div class="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
+                    <p class="text-gray-400 italic text-sm">No encontramos resultados.</p>
                 </div>
                 {% endfor %}
             </div>
