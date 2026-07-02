@@ -42,13 +42,13 @@ def get_db_connection():
         password="password_local" 
     )
 
-# 1. CATÁLOGO PÚBLICO (Fase: Portada General)
+# 1. CATÁLOGO PÚBLICO
 @app.route('/')
 def catalogo_publico():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Mantiene tus columnas exactas de la base de datos controlando el Stock
+        # Selecciona el stock (p[7]) y filtra para que no aparezcan los de stock 0
         cur.execute("SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos WHERE stock > 0;")
         raw_productos = cur.fetchall()
         cur.close()
@@ -93,9 +93,7 @@ def login():
             return "Error de conexión en login: " + str(e)
     return render_template('login.html')
 
-# ==========================================
-# RUTAS DE INICIO DE SESIÓN CON GMAIL
-# ==========================================
+# LOGIN CON GOOGLE
 @app.route('/login/google')
 def login_google():
     redirect_uri = url_for('google_callback', _external=True)
@@ -113,7 +111,6 @@ def google_callback():
         
         conn = get_db_connection()
         cur = conn.cursor()
-        
         cur.execute('SELECT id, username, rol FROM usuarios WHERE email = %s', (email,))
         usuario = cur.fetchone()
         
@@ -138,7 +135,7 @@ def google_callback():
     except Exception as e:
         return "Error en la autenticación con Google: " + str(e)
 
-# 3. INTERFAZ DE CLIENTE (Tienda + Carrito Integrado Lado a Lado)
+# 3. INTERFAZ DE CLIENTE
 @app.route('/cliente')
 def vista_cliente():
     if 'usuario_id' not in session: 
@@ -149,7 +146,7 @@ def vista_cliente():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Agregamos stock al select de la vista de cliente para poder bloquear botones si llega a 0
+        # Obtenemos productos incluyendo su stock (p[7])
         cur.execute('SELECT id, prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, stock FROM productos')
         raw_productos = cur.fetchall()
         
@@ -190,9 +187,7 @@ def vista_cliente():
     except Exception as e:
         return "Error en vista cliente: " + str(e)
 
-# ==========================================
-# RUTAS LÓGICAS DEL MOTOR DEL CARRITO
-# ==========================================
+# MOTOR DEL CARRITO
 @app.route('/carrito/anadir/<int:producto_id>')
 def anadir_al_carrito(producto_id):
     if 'usuario_id' not in session:
@@ -217,7 +212,7 @@ def anadir_al_carrito(producto_id):
         if not producto or producto[1] <= 0:
             cur.close()
             conn.close()
-            return "Producto agotado o no encontrado", 400
+            return "Producto sin stock disponible", 400
             
         precio_unitario = producto[0]
         
@@ -242,6 +237,7 @@ def anadir_al_carrito(producto_id):
     except Exception as e:
         return "Error al añadir al carrito: " + str(e)
 
+# PROCESAR EL CIERRE Y VACIADO TRAS PAGAR
 @app.route('/carrito/pagar')
 def pagar_carrito():
     if 'usuario_id' not in session:
@@ -252,7 +248,6 @@ def pagar_carrito():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Descontamos el stock de cada producto que está en el carrito al pagar tradicionalmente
         cur.execute('''
             SELECT producto_id, cantidad FROM detalle_compras 
             WHERE compra_id = (SELECT id FROM compras WHERE usuario_id = %s AND estado = 'pendiente')
@@ -266,18 +261,48 @@ def pagar_carrito():
         conn.commit()
         cur.close()
         conn.close()
-        return "¡Compra realizada con éxito! Tu orden ha sido guardada en tu historial. <a href='/cliente'>Volver a la tienda</a>"
+        return "¡Compra realizada con éxito con Culqi! <a href='/cliente'>Volver a la tienda</a>"
     except Exception as e:
         return "Error al procesar el pago: " + str(e)
 
-# 4. INTERFAZ DE MAESTRO
+# 4. INTERFAZ INTERMEDIA EXCLUSIVA PARA CULQI
+@app.route('/resumen-pago')
+def resumen_pago():
+    if 'usuario_id' not in session:
+        return redirect(url_for('login'))
+    usuario_id = session['usuario_id']
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, total FROM compras WHERE usuario_id = %s AND estado = 'pendiente'", (usuario_id,))
+        carrito = cur.fetchone()
+        if not carrito or carrito[1] <= 0:
+            cur.close()
+            conn.close()
+            return redirect(url_for('vista_cliente'))
+        
+        compra_id = carrito[0]
+        total_carrito = carrito[1]
+        cur.execute('''
+            SELECT p.prenda, d.cantidad, d.precio_unitario, (d.cantidad * d.precio_unitario) as subtotal
+            FROM detalle_compras d
+            JOIN productos p ON d.producto_id = p.id
+            WHERE d.compra_id = %s
+        ''', (compra_id,))
+        items = cur.fetchall()
+        cur.close()
+        conn.close()
+        return render_template('pago.html', items=items, total=total_carrito)
+    except Exception as e:
+        return "Error al cargar la pasarela de pago: " + str(e)
+
+# 5. INTERFAZ DE MAESTRO
 @app.route('/maestro')
 def vista_maestro():
     if 'username' not in session or session.get('rol') != 'maestro':
         return redirect(url_for('login'))
     return render_template('maestro.html', usuario=session['username'])
 
-# 5. REGISTRAR PRODUCTO (Fase: Publicación del Maestro con Dueño)
 @app.route('/registrar', methods=['POST'])
 def registrar():
     if session.get('rol') != 'maestro': 
@@ -288,8 +313,7 @@ def registrar():
         pago_artesano = precio * 0.8
         horas = request.form['horas']
         dificultad = request.form['dificultad']
-        # Capturamos el stock que define el maestro al crear la prenda (por defecto 1 si no se envía)
-        stock = int(request.form.get('stock', 1))
+        stock = int(request.form.get('stock', 1)) # Toma el valor enviado por el maestro
         maestro_id = session['usuario_id'] 
         
         file = request.files.get('archivo')
@@ -311,30 +335,6 @@ def registrar():
         return redirect(url_for('vista_maestro'))
     except Exception as e:
         return "Error al registrar producto: " + str(e)
-
-# ==========================================
-# RUTA PASARELA DE PAGOS (CULQI INTEGRADO)
-# ==========================================
-@app.route('/procesar-pago-culqi', methods=['POST'])
-def procesar_pago_culqi():
-    data = request.get_json()
-    producto_id = data.get('producto_id')
-    token_id = data.get('token_id')
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
-    try:
-        # Reducimos el stock del producto usando tus campos nativos
-        cur.execute("UPDATE productos SET stock = stock - 1 WHERE id = %s AND stock > 0;", (producto_id,))
-        conn.commit()
-        return jsonify({"status": "success"}), 200
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"status": "error", "message": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
 
 # 6. LOGOUT
 @app.route('/logout')
