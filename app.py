@@ -80,6 +80,82 @@ def catalogo_publico():
         return "Error en catálogo público: " + str(e)
 
 
+# 2. SISTEMA DE LOGIN (TRADICIONAL GET Y POST)
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT id, username, password, rol FROM usuarios WHERE username = %s", (username,))
+            user = cur.fetchone()
+            cur.close()
+            conn.close()
+            
+            if user and user[2] == password: 
+                session['usuario_id'] = user[0]
+                session['username'] = user[1]
+                session['rol'] = user[3]
+                
+                if user[3] == 'maestro':
+                    return redirect(url_for('vista_maestro'))
+                else:
+                    return redirect(url_for('vista_cliente'))
+            else:
+                return "Usuario o contraseña incorrectos", 401
+                
+        except Exception as e:
+            return "Error en el inicio de sesión: " + str(e), 500
+            
+    return render_template('login.html')
+
+
+# LOGIN CON GOOGLE (RUTAS OAUTH)
+@app.route('/login/google')
+def login_google():
+    redirect_uri = url_for('google_authorize', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/login/google/authorize')
+def google_authorize():
+    try:
+        token = google.authorize_access_token()
+        resp = google.get('userinfo')
+        user_info = resp.json()
+        email = user_info.get('email')
+        name = user_info.get('name', email.split('@')[0])
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, rol FROM usuarios WHERE username = %s", (email,))
+        user = cur.fetchone()
+        
+        if not user:
+            # Registra automáticamente como cliente si es un nuevo turista con Gmail
+            cur.execute("INSERT INTO usuarios (username, password, rol) VALUES (%s, 'oauth_secure_pass', 'cliente') RETURNING id", (email,))
+            nuevo_id = cur.fetchone()[0]
+            conn.commit()
+            session['usuario_id'] = nuevo_id
+            session['username'] = email
+            session['rol'] = 'cliente'
+        else:
+            session['usuario_id'] = user[0]
+            session['username'] = user[1]
+            session['rol'] = user[2]
+            
+        cur.close()
+        conn.close()
+        
+        if session['rol'] == 'maestro':
+            return redirect(url_for('vista_maestro'))
+        return redirect(url_for('vista_cliente'))
+    except Exception as e:
+        return "Error en la autenticación de Google: " + str(e)
+
+
 # 3. INTERFAZ DE CLIENTE (CON BÚSQUEDA Y NOMBRE DE MAESTRO)
 @app.route('/cliente')
 def vista_cliente():
@@ -145,6 +221,7 @@ def vista_cliente():
     except Exception as e:
         return "Error en vista cliente: " + str(e)
 
+
 # MOTOR DEL CARRITO (AÑADIR)
 @app.route('/carrito/anadir/<int:producto_id>')
 def anadir_al_carrito(producto_id):
@@ -187,6 +264,7 @@ def anadir_al_carrito(producto_id):
         cur.execute("SELECT SUM(cantidad * precio_unitario) FROM detalle_compras WHERE compra_id = %s", (compra_id,))
         nuevo_total = cur.fetchone()[0] or 0.00
         
+        app.logger.info(f"Total recalculado para el carrito: {nuevo_total}")
         cur.execute("UPDATE compras SET total = %s WHERE id = %s", (nuevo_total, compra_id))
         conn.commit()
         cur.close()
@@ -194,6 +272,7 @@ def anadir_al_carrito(producto_id):
         return redirect(url_for('vista_cliente'))
     except Exception as e:
         return "Error al añadir al carrito: " + str(e)
+
 
 # MOTOR DEL CARRITO (PAGAR TRADICIONAL / LLAMADO POR CULQI)
 @app.route('/carrito/pagar')
@@ -223,6 +302,7 @@ def pagar_carrito():
         return "¡Compra realizada con éxito con Culqi! <a href='/cliente'>Volver a la tienda</a>"
     except Exception as e:
         return "Error al procesar el pago: " + str(e)
+
 
 # 4. NUEVA INTERFAZ EXCLUSIVA PARA LA PASARELA DE CULQI
 @app.route('/resumen-pago')
@@ -255,12 +335,14 @@ def resumen_pago():
     except Exception as e:
         return "Error al cargar la pasarela de pago: " + str(e)
 
+
 # 5. INTERFAZ DE MAESTRO
 @app.route('/maestro')
 def vista_maestro():
     if 'username' not in session or session.get('rol') != 'maestro':
         return redirect(url_for('login'))
     return render_template('maestro.html', usuario=session['username'])
+
 
 @app.route('/registrar', methods=['POST'])
 def registrar():
@@ -271,7 +353,7 @@ def registrar():
         precio = float(request.form['precio'])
         pago_artesano = precio * 0.8
         horas = request.form['horas']
-        dificultad = request.form['dificultad']
+        difficulty = request.form['dificultad']
         stock = int(request.form.get('stock', 1)) # Captura el stock digitado
         maestro_id = session['usuario_id'] 
         
@@ -287,7 +369,7 @@ def registrar():
         cur = conn.cursor()
         cur.execute('''INSERT INTO productos (prenda, precio_total, pago_artesano, tiempo_horas, dificultad, imagen_url, maestro_id, stock) 
                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)''',
-                    (prenda, precio, pago_artesano, horas, dificultad, filename, maestro_id, stock))
+                    (prenda, precio, pago_artesano, horas, difficulty, filename, maestro_id, stock))
         conn.commit()
         cur.close()
         conn.close()
@@ -295,11 +377,13 @@ def registrar():
     except Exception as e:
         return "Error al registrar producto: " + str(e)
 
+
 # 6. LOGOUT
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('catalogo_publico'))
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
